@@ -1,0 +1,484 @@
+<!--
+� Indra Sistemas, S.A.
+2013 - 2014  SPAIN
+
+All rights reserved
+-->
+<html xmlns:th="http://www.thymeleaf.org" xmlns:dt="http://github.com/dandelion/datatables">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<!-- title th:text="#{consola_web_name}"/-->
+<!-- HOJAS DE ESTILO -->
+<link rel="stylesheet" type="text/css" media="all" href="./css/sofia2.css"/>
+<link rel="stylesheet" type="text/css" media="all" href="./css/jquery-ui-1.10.3.custom.min.css"/>
+ 
+<!-- FINAL HOJAS DE ESTILO -->
+<script src="./js/jquery-1.9.1.js"/>
+<script src="./js/jquery-ui-1.10.3.custom.min.js"/>
+<script src="./js/jquery.autocomplete.js"/>
+<script src="./js/jquery.dataTables.min.js"/>
+
+<script src="./js/resources/js/bootstrap/validator.js"/>
+<script src="./js/resources/js/jquery/js/bootstrap-tagsinput.min.js"/>
+<script type="text/javascript">
+    var optionName = 'ADMINISTRACION';
+</script>
+</head>
+
+<style>
+
+/* Estilos de la capa contenedora */
+
+
+div.ControlsRow, div.HeadersRow {
+    font-family: Georgia;
+}
+div.Canvas
+{
+  font-family: Lucida Console, Georgia;
+  font-size: 13px;
+/*     background-color:#ECECEC; */
+    color:#000000;
+    overflow:auto;
+    position:relative;
+/*     border:solid 1px #CECECE; */
+}
+.ObjectBrace
+{
+    color:#00AA00;
+    font-weight:bold;
+}
+.ArrayBrace
+{
+    color:#0033FF;
+    font-weight:bold;
+}
+.PropertyName
+{
+    color:#CC0000;
+    font-weight:bold;
+}
+.String
+{
+    color:#007777;
+}
+.Number
+{
+    color:#AA00AA;
+}
+.Boolean
+{
+  color:#0000FF;
+}
+.Function
+{
+  color:#AA6633;
+  text-decoration:italic;
+}
+.Null
+{
+  color:#0000FF;
+}
+.Comma
+{
+  color:#000000;
+  font-weight:bold;
+}
+PRE.CodeContainer{
+  margin-top:0px;
+  margin-bottom:0px;
+}
+PRE.CodeContainer img{
+  cursor:pointer;
+  border:none;
+  margin-bottom:-1px;
+}
+#CollapsibleViewDetail a{
+  padding-left:10px;
+}
+#ControlsRow{
+  white-space:nowrap;
+  font: 11px Georgia;
+}
+#HeaderTitle{
+  text-align:right;
+  font-size:11px;
+}
+#HeaderSubTitle{
+  margin-bottom:2px;
+  margin-top:0px
+}
+#RawJson{
+  width:99%;
+  height:130px;
+}
+A.OtherToolsLink { color:#555;text-decoration:none; }
+A.OtherToolsLink:hover { text-decoration:underline; }
+.QueryOption{
+    padding-left:50px;
+    width:890px;
+}
+
+#checks li{
+        padding: 0 10px 9px;
+}
+#campos li{
+        padding: 0 10px 10px 10px;
+}
+
+.panel-title{
+  display: inline;
+}
+
+.columnMine{
+  padding: 0px 5px 0 0;
+  float: left;
+  width: auto;
+  max-width: 21%;
+  min-width: 18%;
+}
+
+.columnMine ul{
+    padding: 0;
+    background: transparent;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 215px;
+}
+table.dataTable td {
+    padding: 5px 3px;
+}
+#label_offset .ui-widget-content {
+    border: 1px solid #a6c9e2 !important;
+    background: #fcfdfd 50% bottom repeat-x !important;
+    padding: 0px !important;
+}
+table.dataTable tr td:first-child, table.dataTable tr td:nth-child(2){
+	white-space: normal;
+}
+
+
+.boxHeadLista{
+    background: #4A8394;
+    color: white;
+    padding: 10px;
+}
+.boxInfoBody{
+    padding: 10px;
+    white-space: nowrap;
+    background: rgba(218, 216, 216, 0.18);
+    width: 30%;
+    overflow: hidden;
+    position: absolute;
+    left: 2%;
+}
+#boxBodyLista{
+	height: 100%;
+    position: absolute;
+    left: 25.7%;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+textarea {
+    overflow-y: scroll;
+    width: 100%;
+    height: 60%;
+    margin-top: 20px;
+}
+</style>
+<script type="text/javascript" th:inline="javascript">
+//<![CDATA[           
+// we need tabs as spaces and not CSS magin-left 
+// in order to ratain format when coping and pasing the code
+window.SINGLE_TAB = "  ";  
+window.QuoteKeys = true;
+function $id(id){ return document.getElementById(id); }
+function IsArray(obj) {
+  return obj && 
+          typeof obj === 'object' && 
+          typeof obj.length === 'number' &&
+          !(obj.propertyIsEnumerable('length'));
+}
+function Process(id, json){
+  SetTab();
+  window.IsCollapsible = true;
+  //var json = $id(id).value;
+  var html = "";
+  try{
+    if(json == "" || json ==null) json = "\"\"";
+    var obj = eval("["+json+"]");
+    html = ProcessObject(obj[0], 0, false, false, false);
+    $id("Canvas"+id).innerHTML = "<PRE class='CodeContainer container'>"+html+"</PRE>";
+  }catch(e){
+    //alert("JSON is not well formated:\n"+e.message);  
+    //$id("Canvas").innerHTML = "";
+      $id("Canvas"+id).innerHTML = json;
+  }
+}
+window._dateObj = new Date();
+window._regexpObj = new RegExp();
+function ProcessObject(obj, indent, addComma, isArray, isPropertyContent){
+  var html = "";
+  var comma = (addComma) ? "<span class='Comma'>,</span> " : ""; 
+  var type = typeof obj;
+  var clpsHtml ="";
+  if(IsArray(obj)){
+    if(obj.length == 0){
+      html += GetRow(indent, "<span class='ArrayBrace'>[ ]</span>"+comma, isPropertyContent);
+    }else{
+      clpsHtml = window.IsCollapsible ? "<span></span><span class='collapsible'>" : "";
+      html += GetRow(indent, "<span class='ArrayBrace'>[</span>"+clpsHtml, isPropertyContent);
+      for(var i = 0; i < obj.length; i++){
+        html += ProcessObject(obj[i], indent + 1, i < (obj.length - 1), true, false);
+      }
+      clpsHtml = window.IsCollapsible ? "</span>" : "";
+      html += GetRow(indent, clpsHtml+"<span class='ArrayBrace'>]</span>"+comma);
+    }
+  }else if(type == 'object'){
+    if (obj == null){
+        html += FormatLiteral("null", "", comma, indent, isArray, "Null");
+    }else if (obj.constructor == window._dateObj.constructor) { 
+        html += FormatLiteral("new Date(" + obj.getTime() + ") /*" + obj.toLocaleString()+"*/", "", comma, indent, isArray, "Date"); 
+    }else if (obj.constructor == window._regexpObj.constructor) {
+        html += FormatLiteral("new RegExp(" + obj + ")", "", comma, indent, isArray, "RegExp"); 
+    }else{
+      var numProps = 0;
+      for(var prop in obj) numProps++;
+      if(numProps == 0){
+        html += GetRow(indent, "<span class='ObjectBrace'>{ }</span>"+comma, isPropertyContent);
+      }else{
+        clpsHtml = window.IsCollapsible ? "<span></span><span class='collapsible'>" : "";
+        html += GetRow(indent, "<span class='ObjectBrace'>{</span>"+clpsHtml, isPropertyContent);
+        var j = 0;
+        for(var prop in obj){
+          var quote = window.QuoteKeys ? "\"" : "";
+          html += GetRow(indent + 1, "<span class='PropertyName'>"+quote+prop+quote+"</span>: "+ProcessObject(obj[prop], indent + 1, ++j < numProps, false, true));
+        }
+        clpsHtml = window.IsCollapsible ? "</span>" : "";
+        html += GetRow(indent, clpsHtml+"<span class='ObjectBrace'>}</span>"+comma);
+      }
+    }
+  }else if(type == 'number'){
+    html += FormatLiteral(obj, "", comma, indent, isArray, "Number");
+  }else if(type == 'boolean'){
+    html += FormatLiteral(obj, "", comma, indent, isArray, "Boolean");
+  }else if(type == 'function'){
+    if (obj.constructor == window._regexpObj.constructor) {
+        html += FormatLiteral("new RegExp(" + obj + ")", "", comma, indent, isArray, "RegExp"); 
+    }else{
+        obj = FormatFunction(indent, obj);
+        html += FormatLiteral(obj, "", comma, indent, isArray, "Function");
+    }
+  }else if(type == 'undefined'){
+    html += FormatLiteral("undefined", "", comma, indent, isArray, "Null");
+  }else{
+    html += FormatLiteral(obj.toString().split("\\").join("\\\\").split('"').join('\\"'), "\"", comma, indent, isArray, "String");
+  }
+  return html;
+}
+function FormatLiteral(literal, quote, comma, indent, isArray, style){
+  if(typeof literal == 'string')
+    literal = literal.split("<").join("&lt;").split(">").join("&gt;");
+  var str = "<span class='"+style+"'>"+quote+literal+quote+comma+"</span>";
+  if(isArray) str = GetRow(indent, str);
+  return str;
+}
+function FormatFunction(indent, obj){
+  var tabs = "";
+  for(var i = 0; i < indent; i++) tabs += window.TAB;
+  var funcStrArray = obj.toString().split("\n");
+  var str = "";
+  for(var i = 0; i < funcStrArray.length; i++){
+    str += ((i==0)?"":tabs) + funcStrArray[i] + "\n";
+  }
+  return str;
+}
+function GetRow(indent, data, isPropertyContent){
+  var tabs = "";
+  for(var i = 0; i < indent && !isPropertyContent; i++) tabs += window.TAB;
+  if(data != null && data.length > 0 && data.charAt(data.length-1) != "\n")
+    data = data+"\n";
+  return tabs+data;                       
+}
+
+function TraverseChildren(element, func, depth){
+  for(var i = 0; i < element.childNodes.length; i++){
+    TraverseChildren(element.childNodes[i], func, depth + 1);
+  }
+  func(element, depth);
+}
+
+function SetTab(){
+  window.TAB = MultiplyString(1, window.SINGLE_TAB);
+}
+function EnsureIsPopulated(){
+  if(!$id("Canvas").innerHTML && !!$id("respuesta").value) Process();
+}
+function MultiplyString(num, str){
+  var sb =[];
+  for(var i = 0; i < num; i++){
+    sb.push(str);
+  }
+  return sb.join("");
+}
+
+function LinkToJson(){
+  var val = $id("respuesta").value;
+  val = escape(val.split('/n').join(' ').split('/r').join(' '));
+  $id("InvisibleLinkUrl").value = val;
+  $id("InvisibleLink").submit();
+
+}
+
+
+
+function buscarPlayas(){
+	mostrarPlayaCode();
+	   $.ajax({
+		beforeSend: function(request) {
+		   request.setRequestHeader("auth-token","c131dbd855764c368b51fdfba520ec3d");
+		},
+		url: "http://sofia2.com/sib-api/api/ngsi/v2/entities/?type=Beach&q=beachType=whiteSand,facilities=promenade",
+	    type: 'GET',
+	    dataType: 'text',
+	    contentType: 'text/plain',
+	    mimeType: 'text/plain',
+	    success: function(data){
+	    	$("#Canvasrespuesta").empty();
+	     	Process("respuesta", data);
+	    },
+	    error: function (data){
+	    	alert(data);
+	    }
+	});
+	   
+}
+
+function buscarParking(){
+		mostrarParkingCode();
+	   $.ajax({
+		beforeSend: function(request) {
+		   request.setRequestHeader("auth-token","c131dbd855764c368b51fdfba520ec3d");
+		},
+		url: "http://sofia2.com/sib-api/api/ngsi/v2/entities/?type=OffStreetParking&q=availableSpotNumber>50",
+	    type: 'GET',
+	    dataType: 'text',
+	    contentType: 'text/plain',
+	    mimeType: 'text/plain',
+	    success: function(data){
+	    	$("#Canvasrespuesta").empty();
+	     	Process("respuesta", data);
+	    },
+	    error: function (data){
+	    	alert(data);
+	    }
+	});
+	   
+}
+
+function mostrarParkingCode(){
+	$("#js").val('function buscarPlayas(){\n\t$.ajax({\n\t\tbeforeSend: function(request){\n\t\t\trequest.setRequestHeader("auth-token", "<auth-token>");\n\t\t},\n\t\turl: "http://sofia2.com/sib-api/api/ngsi/v2/entities/?type=OffStreetParking&q=availableSpotNumber>50",\n\t\ttype: "GET",\n\t\tdataType: "text",\n\t\tcontentType: "text/plain",\n\t\tmimeType: "text/plain",\n\t\tsuccess: function(data){\n\t\t\t$("#Canvasrespuesta").empty();\n\t\t\tProcess("respuesta", data);\n\t\t},\n\t\terror: function (data){\n\t\t\talert(data);\n\t\t}\n\t});\n}');
+	$("#js").show();
+}
+
+function mostrarMuseoCode(){
+	$("#js").val('function buscarPlayas(){\n\t$.ajax({\n\t\tbeforeSend: function(request){\n\t\t\trequest.setRequestHeader("auth-token", "<auth-token>");\n\t\t},\n\t\turl: "http://sofia2.com/sib-api/api/ngsi/v2/entities/?type=Museum&q=address.addressLocality=Barcelona,museumType=fineArts",\n\t\ttype: "GET",\n\t\tdataType: "text",\n\t\tcontentType: "text/plain",\n\t\tmimeType: "text/plain",\n\t\tsuccess: function(data){\n\t\t\t$("#Canvasrespuesta").empty();\n\t\t\tProcess("respuesta", data);\n\t\t},\n\t\terror: function (data){\n\t\t\talert(data);\n\t\t}\n\t});\n}');
+	$("#js").show();
+}
+
+function mostrarPlayaCode(){
+	$("#js").val('function buscarPlayas(){\n\t$.ajax({\n\t\tbeforeSend: function(request){\n\t\t\trequest.setRequestHeader("auth-token", "<auth-token>");\n\t\t},\n\t\turl: "http://sofia2.com/sib-api/api/ngsi/v2/entities/?type=Beach&q=beachType=whiteSand,facilities=promenade",\n\t\ttype: "GET",\n\t\tdataType: "text",\n\t\tcontentType: "text/plain",\n\t\tmimeType: "text/plain",\n\t\tsuccess: function(data){\n\t\t\t$("#Canvasrespuesta").empty();\n\t\t\tProcess("respuesta", data);\n\t\t},\n\t\terror: function (data){\n\t\t\talert(data);\n\t\t}\n\t});\n}');
+	$("#js").show();
+}
+
+function buscarMuseo(){
+	mostrarMuseoCode();
+	   $.ajax({
+		beforeSend: function(request) {
+		   request.setRequestHeader("auth-token","c131dbd855764c368b51fdfba520ec3d");
+		},
+		url: "http://sofia2.com/sib-api/api/ngsi/v2/entities/?type=Museum&q=address.addressLocality=Barcelona,museumType=fineArts",
+	    type: 'GET',
+	    dataType: 'text',
+	    contentType: 'text/plain',
+	    mimeType: 'text/plain',
+	    success: function(data){
+	    	$("#Canvasrespuesta").empty();
+	     	Process("respuesta", data);
+	    },
+	    error: function (data){
+	    	alert(data);
+	    }
+	});
+	   
+}
+
+$( document ).ready(function() {
+	$("#js").hide();
+ 	});
+
+
+//]]>
+
+</script>
+<body>
+    <div id="wrapper">
+        <div id="container"> 
+            <!-- nav th:include="menu::#menuFragment"> </nav-->
+		    <div id="contenido" class="wrappercontenido quitapadding">
+		    
+		      <div id="contenido_interior"> 
+		        <!-- ***** AQUI VA EL CONTENIDO DE CADA PAGINA***** -->
+		        <div id="form_container" class="wrapper-cotainer"> 
+		          <!-- MIGAS DE PAN -->
+		          <div id="migas_pan" class="miga">
+		            <ul style="height: 55px;">
+		              <li text="Ejemplo invocación APIs Sofia2 publicada sobre NGSI-9" style="margin-top: 10px;">Ejemplo invocación APIs Sofia2 publicada sobre NGSI-9</li>
+		              <a href="https://www.sofia2.com"><img src="./images/Sofia2TW.png" alt="Sofia2" align="right" style="height: 55px;padding-right: 18px;"></a>
+		            </ul>
+		          </div>
+		          <!-- FINAL MIGAS DE PAN -->
+		          <form id="form_ejemplo_ngsi" class="formulario" >
+					<!--<div class="form_description">
+			              <h2 th:text="#{admin_breadcrumb_opciones}"></h2>			        
+			        </div>-->
+				   <div class="form-well row"> 
+						<div class="form-wrapper pull-left col-md-12">
+							<div class="col-md-4">
+	                            <h3 id="buscar_playas_label" class="description" for="buscar_playas" text="Buscar playas de arena blanca y con paseo">Buscar playas de arena blanca y con paseo</h3>
+								
+								<input id="buscar_playas" type="button" style="margin-left: 53px;" class="button_text" value="Buscar Playas" name="Buscar playas" title="Buscar Playas" onclick="buscarPlayas();"/>
+								
+							</div>	
+							 <div class="col-md-4" >
+								<h3 id="buscar_parking_label" class="description" for="buscar_parking" text="Buscar parkings con más de 50 plazas libres">Buscar parkings con más de 50 plazas libres</h3>
+								<!-- textarea id="js_parking" rows="15" cols="40" disabled="disabled"></textarea-->
+								<input id="buscar_parking" onclick="buscarParking();" style="margin-left: 53px;" class="button_text" type="button" value="Buscar parking" name="Buscar parking" title="Buscar parking" value="Buscar parking"/>
+								
+							</div>	
+							<div class="col-md-4">
+								<h3 id="buscar_museo_label" class="description"  for="buscar_museo" text="Buscar museos de Bellas Artes en Barcelona">Buscar museos de Bellas Artes en Barcelona</h3>
+								<!-- textarea id="js_museo" rows="15" cols="40" disabled="disabled"></textarea-->
+								<input id="buscar_museo" onclick="buscarMuseo();" style="margin-left: 53px;" class="button_text" type="button" value="Buscar museo" name="Buscar museo" title="Buscar museo" value="Buscar museo"/>
+								
+							</div>	
+						</div>
+						
+						<div id="Canvasrespuesta" class="container col-md-12"></div> 
+						<div class="col-md-12">
+							<textarea id="js" disabled="disabled"></textarea>
+						</div>
+				   </div>
+					
+		          </form>
+		          
+		        </div>
+		      </div>
+		    </div>
+		    <!-- FIN CONTENIDO --> 
+            <!-- footer th:include="footer::#footerFragment" class="col-md-12"> </footer-->
+        </div>
+    </div>
+</body>
+</html>
